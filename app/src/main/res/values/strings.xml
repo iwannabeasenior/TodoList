@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">TodoList</string>
+    <string name="title_today">Today</string>
+    <string name="title_calendar">Upcoming</string>
+    <string name="title_search">Search</string>
+    <string name="title_menu">Browse</string>
+</resources>
