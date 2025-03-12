@@ -33,9 +33,6 @@ import com.example.todolist.navigation.TopLevelNavHost
 
 @Composable
 fun TodoApp(modifier: Modifier = Modifier) {
-//    var itemSelected by remember {
-//        mutableStateOf(TopLevelDestination.Today.route)
-//    }
     val navHostController = rememberNavController()
     val currentBackStackEntry by navHostController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: TopLevelDestination.Today.route
@@ -79,7 +76,6 @@ fun TodoApp(modifier: Modifier = Modifier) {
 
 @Composable
 fun BottomAppBarContent(itemSelected: String, itemClick: (route: String) -> Unit, navHostController: NavHostController) {
-
     BottomAppBar {
         TopLevelDestination.getEntries().forEach { item ->
             NavigationBarItem(

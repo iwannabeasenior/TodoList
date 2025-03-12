@@ -20,4 +20,8 @@ class TaskRepo @Inject constructor(private val taskDao: TaskDao) {
     suspend fun update(task: Task) {
         taskDao.updateTask(task)
     }
+
+    fun getSubTasks(parentTaskId: Int): Flow<List<Task>> {
+        return taskDao.getSubTasks(parentTaskId)
+    }
 }

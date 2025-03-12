@@ -8,6 +8,7 @@ import androidx.room.Update
 import com.example.todolist.data.model.Task
 import kotlinx.coroutines.flow.Flow
 
+
 @Dao
 interface TaskDao {
 
@@ -25,4 +26,7 @@ interface TaskDao {
 
     @Insert
     suspend fun insertTask(task: Task)
+
+    @Query("SELECT * FROM task WHERE parent_task_id = :parentTaskId")
+    fun getSubTasks(parentTaskId: Int): Flow<List<Task>>
 }

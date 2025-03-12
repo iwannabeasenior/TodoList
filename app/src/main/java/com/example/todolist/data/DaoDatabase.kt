@@ -23,7 +23,7 @@ abstract class DaoDatabase : RoomDatabase() {
                     context.applicationContext,
                     DaoDatabase::class.java,
                     "dao_database"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }

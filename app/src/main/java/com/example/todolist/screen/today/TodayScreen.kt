@@ -1,82 +1,81 @@
 package com.example.todolist.screen.today
 
-import android.hardware.lights.Light
-import android.media.Image
-import android.widget.EditText
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.todolist.R
-import com.example.todolist.data.model.Task
-import com.example.todolist.navigation.TopLevelDestination
-import com.example.todolist.ui.theme.PriorityFourColor
-import com.example.todolist.ui.theme.PriorityOneColor
-import com.example.todolist.ui.theme.PriorityThreeColor
-import com.example.todolist.ui.theme.PriorityTwoColor
-import java.util.Date
+import com.example.todolist.screen.today.component.TaskItem
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @Preview
 @Composable
 internal fun TodayScreen(viewModel: TodayViewModel = hiltViewModel()) {
     // we need to calculate today task here
-    var count by remember {
-        mutableStateOf(0)
-    }
-    var showSheet by remember {
+    var showAddTask by remember {
         mutableStateOf(false)
     }
-    var tasks = viewModel.allTasks.collectAsState()
+
+    val undoTasks = viewModel.undoTasks.collectAsState()
+
+    val subTasks = viewModel.subTasks.collectAsState()
+
+    val count by remember {
+        derivedStateOf {
+            undoTasks.value.size
+        }
+    }
+
+    var showEditTask by remember {
+        run {
+            val state = mutableStateOf(false)
+            object : MutableState<Boolean> by state {
+                override var value: Boolean
+                    get() = state.value
+                    set(newValue) {
+                        state.value = newValue
+                        if (!newValue) {
+                             viewModel.clearSelectedTask()
+                        }
+                    }
+            }
+        }
+    }
+
+    var selectedTask = viewModel.selectedTask.collectAsState()
+
     Box(
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().clickable {
-                if (showSheet) {
-                    // TODO: show dialog Do you want to discard
-                }
-            },
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             Row(
@@ -89,17 +88,40 @@ internal fun TodayScreen(viewModel: TodayViewModel = hiltViewModel()) {
                 userScrollEnabled = true,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(tasks.value) { task ->
-                    TaskItem(task)
+                items(undoTasks.value, key = { task -> task.uid!! }) { task ->
+                    TaskItem(
+                        task,
+                        onItemClicked = {
+                            showEditTask = true
+                            viewModel.selectTask(task)
+                        }
+                    ) {
+                        viewModel.onTaskChecked(it)
+                    }
                 }
                 item {
                     AddTask {
-                        showSheet = !showSheet
+                        showAddTask = !showAddTask
                     }
                 }
             }
         }
-        if (showSheet) AddTaskBottomSheet(viewModel = viewModel)
+
+        if (showAddTask) AddTaskBottomSheet(viewModel = viewModel) {
+            showAddTask = false
+        }
+
+        if (showEditTask) {
+            EditTaskBottomSheet(
+                viewModel = viewModel,
+                task = selectedTask.value!!,
+                onClickShowSheet = {
+                    showAddTask = !showAddTask
+                }
+            ) {
+                showEditTask = false
+            }
+        }
     }
 
 }
@@ -127,86 +149,8 @@ fun AddTask(modifier: Modifier = Modifier, onClickShowSheet: () -> Unit) {
                 tint = Color.Red,
                 contentDescription = ""
             )
-            Text("Add Task", fontSize = 20.sp)
+            Text("Add Task / SubTask", fontSize = 20.sp)
         }
     }
 }
 
-@Composable
-private fun TaskItem(task: Task) {
-    var isChecked by remember {
-        mutableStateOf(false)
-    }
-    Surface(
-        shadowElevation = 3.dp,
-        shape = RoundedCornerShape(10)
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.Top,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(30))
-                .padding(10.dp)
-        ) {
-            IconButton(
-                onClick = {
-                    isChecked = true
-                    // 0.5 second after that will disappear
-
-                }
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(if (isChecked) R.drawable.ic_checked else R.drawable.ic_unchecked),
-                    "",
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-            Column(
-                verticalArrangement = Arrangement.spacedBy(5.dp)
-            ) {
-                Text(task.content, fontSize = 20.sp)
-
-                if (task.description != null) Text(
-                    task.description,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Light
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.ic_today),
-                            "",
-                            modifier = Modifier.size(20.dp),
-                            tint = Color.Green.copy(alpha = 0.5f)
-                        )
-                        Text("Today", color = Color.Green.copy(alpha = 0.5f))
-                    }
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        Icon(
-                            imageVector = ImageVector.vectorResource(R.drawable.ic_inbox),
-                            "",
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text("Inbox")
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-enum class Priority(val priority: Int, val color: Color) {
-    One(1, PriorityOneColor),
-    Two(2, PriorityTwoColor),
-    Three(3, PriorityThreeColor),
-    Four(4, PriorityFourColor)
-}
